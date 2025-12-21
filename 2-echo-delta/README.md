@@ -36,6 +36,7 @@
 | [심건호](https://www.linkedin.com/in/geonho-shin-139155167/) | Kearney에서 컨설팅을, Doeat에서 PO를 경험하고 패스트캠퍼스에서 AX사업을 리드 |
 | [김서진](https://www.linkedin.com/in/k7n/) | 토스, 뤼튼, 트웰브랩스 등에서 AI Engineer로 근무. 뷰티 브랜드의 성공을 돕고 있음 |
 | [이동훈](https://www.linkedin.com/in/donghoon-lee-a20311106/) | Myrealtrip에서 AI Lab을 리드하며 AI 도입과 제품·업무 전반의 활용을 이끌고 있음 |
+| [최동운](https://www.linkedin.com/in/dongwoon-colin-choi/) | 삼양식품에서 TikTok과 AI 에이전트 시대에 최적화된 마케팅 솔루션을 개발. 크래프톤 AI 신사업 리드, PUBG PM 경험 |
 
 ---
 
