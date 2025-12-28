@@ -1,0 +1,10 @@
+# Generated files
+nametags/
+*.pdf
+
+# System files
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
