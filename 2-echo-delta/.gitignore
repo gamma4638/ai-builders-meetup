@@ -1,6 +1,10 @@
 # Generated files
 nametags/
-*.pdf
+**/archived/
+
+# Private data (phone numbers)
+attendee/attendees_private.xlsx
+attendee/hosts_test.csv
 
 # System files
 .DS_Store
