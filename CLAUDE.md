@@ -56,7 +56,7 @@
 source .venv/bin/activate
 
 # 자막 생성 (openai-whisper 사용)
-python scripts/subtitle/generate.py "2-echo-delta/videos/{영상파일}.mov"
+python scripts/subtitle/generate.py "2-echo-delta/videos/raw/{영상파일}.mov"
 
 
 ### 환경 설정
@@ -89,7 +89,11 @@ python scripts/subtitle/generate.py "2-echo-delta/videos/{영상파일}.mov"
 ai-builders-meetup/
 ├── 2-echo-delta/           # 2회차 밋업
 │   ├── slides/             # 발표자료 PDF
-│   ├── videos/             # 영상 파일 및 SRT 자막
+│   ├── videos/             # 영상 및 자막
+│   │   ├── raw/            # 원본 영상 (.mov)
+│   │   ├── cropped/        # 크롭된 영상
+│   │   ├── subtitles/      # SRT/ASS 자막
+│   │   └── burnin_output/  # 자막 합성 영상
 │   └── speakers/           # 스피커 정보
 ├── scripts/
 │   └── subtitle/           # 자막 관련 스크립트

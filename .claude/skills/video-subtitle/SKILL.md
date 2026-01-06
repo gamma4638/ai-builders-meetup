@@ -43,13 +43,18 @@ arguments:
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    입력 확인                         │
-│  video만 → 전체 워크플로우                           │
+│  video만 → 환경 선택 → 자막 생성                     │
 │  srt만   → Step 2부터 시작                          │
 │  둘 다 없음 → 사용자에게 질문                        │
 └────────┬────────────────────────────────────────────┘
          ▼
+┌─────────────────────────────────────────────────────┐
+│              환경 선택 (video 있을 때)               │
+│  Mac (mlx-whisper) / WSL (openai-whisper) / API     │
+└────────┬────────────────────────────────────────────┘
+         ▼
 ┌─────────────────┐
-│ subtitle-       │  mlx-whisper (large-v3)
+│ subtitle-       │  선택한 환경으로 자막 생성
 │ generator       │  → SRT 파일 생성
 └────────┬────────┘  [video 있을 때만]
          ▼
@@ -65,8 +70,13 @@ arguments:
          ▼
 ┌─────────────────┐
 │ subtitle-       │  발표자료 기반 품질 검증
-│ validator       │  → _validation.json/md
+│ validator       │  → 추가 수정 제안
 └────────┬────────┘  [reference 있을 때만]
+         ▼
+┌─────────────────┐
+│ 통합 보고서     │  각 단계 결과 수집
+│ 생성            │  → _report.md
+└────────┬────────┘
          ▼
 ┌─────────────────┐
 │  최종 자막      │
@@ -81,13 +91,33 @@ arguments:
 
 | 입력 | 시작 단계 |
 |------|----------|
-| `--video` 있음 | Step 1 (자막 생성)부터 |
+| `--video` 있음 | Step 0.5 (환경 선택) → Step 1 (자막 생성) |
 | `--srt` 있음 | Step 2 (중복 정리)부터 |
 | 둘 다 없음 | 사용자에게 질문 |
 
 **둘 다 없을 때 질문 예시:**
 - "영상 파일에서 새로 자막을 생성할까요, 아니면 기존 SRT 파일을 정리/교정할까요?"
 - 사용자 선택에 따라 파일 경로 확인 후 진행
+
+### Step 0.5: 환경 선택 (video 있을 때만)
+
+video 입력이 있으면 사용자에게 **자막 생성 환경을 질문**:
+
+| 옵션 | 환경 | 특징 |
+|------|------|------|
+| **Mac (mlx-whisper)** | Apple Silicon M1/M2/M3 | 빠름, 무료, Apple Silicon 전용 |
+| **WSL2/Linux (openai-whisper)** | CPU 기반 | 느림, 무료, 범용 |
+| **OpenAI API** | 클라우드 | 빠름, 유료 ($0.006/분), .env에 API 키 필요 |
+
+**질문 예시:**
+```
+자막 생성에 사용할 환경을 선택해주세요:
+1. Mac (mlx-whisper) - Apple Silicon 전용, 빠름
+2. WSL2/Linux (openai-whisper) - CPU 기반, 느림
+3. OpenAI API - 클라우드, 빠름, 유료
+```
+
+선택된 method를 Step 1로 전달.
 
 ### Step 1: 자막 생성 (subtitle-generator) - video 있을 때만
 
@@ -98,6 +128,7 @@ Prompt: |
   - video_path: $video
   - language: ko
   - model: large-v3
+  - method: $method (mlx-whisper | openai-whisper | openai-api)
 ```
 
 출력: `{video_basename}.srt`
@@ -133,20 +164,55 @@ Prompt: |
   - reference_path: $reference
 ```
 
-출력:
-- `{basename}_validation.json` - 프로그래밍/자동화용
-- `{basename}_validation.md` - 사람이 읽는 보고서
+출력: 구조화된 검증 결과 (통합 보고서에 포함)
+
+### Step 5: 통합 보고서 생성
+
+각 단계의 결과를 수집하여 하나의 보고서로 통합:
+
+```
+Write: {basename}_report.md
+```
+
+보고서 구조:
+```markdown
+# 자막 처리 보고서
+
+## 파일 정보
+- 원본: {input_file}
+- 최종: {output_file}
+- 발표자료: {reference_file}
+- 처리일시: {timestamp}
+
+## 요약
+| 단계 | 변경 |
+|------|------|
+| 중복 정리 | 116개 → 81개 (-35) |
+| STT 교정 | 23개 수정 |
+| 품질 검증 | 3개 제안 |
+
+## 1. 중복 정리 (Cleaner)
+{cleaner_result}
+
+## 2. STT 교정 (Corrector)
+{corrector_result}
+
+## 3. 품질 검증 (Validator)
+{validator_result}
+```
+
+출력: `{basename}_report.md`
 
 ## 예시
 
 ### 예시 1: 영상에서 자막 생성
 ```
-/video-subtitle --video 2-echo-delta/videos/meetup_02_서진님.mp4 --reference 2-echo-delta/slides/1-김서진-AI-Native.pdf
+/video-subtitle --video 2-echo-delta/videos/raw/meetup_02_서진님.mov --reference 2-echo-delta/slides/1-김서진-AI-Native.pdf
 ```
 
 ### 예시 2: 기존 SRT 파일 교정
 ```
-/video-subtitle --srt 2-echo-delta/videos/meetup_02_서진님.srt --reference 2-echo-delta/slides/1-김서진-AI-Native.pdf
+/video-subtitle --srt 2-echo-delta/videos/subtitles/raw/meetup_02_서진님.srt --reference 2-echo-delta/slides/1-김서진-AI-Native.pdf
 ```
 
 ### 출력
@@ -167,21 +233,29 @@ Prompt: |
 - 수정 완료: 23개
 
 ### 4. 품질 검증 (reference가 있을 때만)
-- 총 이슈: 3개 (High: 0, Medium: 2, Low: 1)
-- 검증 보고서: meetup_02_서진님_validation.md
+- 추가 제안: 3개 (High: 0, Medium: 2, Low: 1)
+
+### 5. 통합 보고서 생성
+- 보고서: meetup_02_서진님_report.md
 
 ### 최종 파일
 - 자막: 2-echo-delta/videos/meetup_02_서진님_corrected.srt
-- 검증: 2-echo-delta/videos/meetup_02_서진님_validation.json
-- 보고서: 2-echo-delta/videos/meetup_02_서진님_validation.md
+- 보고서: 2-echo-delta/videos/meetup_02_서진님_report.md
 ```
 
 ## 시스템 요구사항
 
-- Apple Silicon Mac (M1/M2/M3)
+### 환경별 요구사항
+
+| 환경 | 요구사항 |
+|------|----------|
+| **Mac (mlx-whisper)** | Apple Silicon M1/M2/M3, 메모리 16GB+, 저장공간 3GB+ |
+| **WSL2/Linux (openai-whisper)** | Python 3.10+, 저장공간 3GB+, (CUDA GPU 권장) |
+| **OpenAI API** | `.env` 파일에 `OPENAI_API_KEY` 설정, 인터넷 연결 |
+
+### 공통 요구사항
 - Python 3.10+
-- 메모리: 16GB+ (large-v3 모델용)
-- 저장공간: 3GB+ (모델 다운로드)
+- ffmpeg (오디오 추출용)
 
 ## 지원 형식
 

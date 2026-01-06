@@ -230,7 +230,7 @@ def main():
     print("=" * 70)
 
     # Configuration
-    VIDEO_PATH = "/home/junchan/github/ai-builders-meetup/2-echo-delta/videos/meetup_02_건호님.mov"
+    VIDEO_PATH = "/home/junchan/github/ai-builders-meetup/2-echo-delta/videos/raw/meetup_02_건호님.mov"
     OUTPUT_PATH = "/home/junchan/github/ai-builders-meetup/2-echo-delta/videos/meetup_02_건호님.srt"
     PDF_PATH = "/home/junchan/github/ai-builders-meetup/2-echo-delta/slides/4-신건호-AI Builder Meetup_DAY1 B2B 신건호_251229_VF(배포용).pdf"
 

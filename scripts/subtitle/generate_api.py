@@ -7,6 +7,7 @@ Features:
 - Handles large files by splitting audio into chunks
 - Automatic retry with exponential backoff
 - Timestamp merging with overlap handling
+- Auto-loads OPENAI_API_KEY from .env file
 """
 
 import os
@@ -18,6 +19,13 @@ import unicodedata
 import glob
 from datetime import timedelta
 from pathlib import Path
+
+# Load .env file if exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not installed, will use environment variables directly
 
 def format_timestamp(seconds: float) -> str:
     """Convert seconds to SRT timestamp format (HH:MM:SS,mmm)"""

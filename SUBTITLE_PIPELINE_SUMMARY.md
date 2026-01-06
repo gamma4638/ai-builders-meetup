@@ -164,22 +164,22 @@ After completing 건호님:
 # Modify the scripts to process other speakers:
 # 1. 서진님 (68MB)
 python generate_subtitle_full.py \
-  2-echo-delta/videos/meetup_02_서진님.mov \
+  2-echo-delta/videos/raw/meetup_02_서진님.mov \
   "2-echo-delta/slides/1-김서진-AI-Native Company.pdf"
 
 # 2. 동훈님 (153MB)
 python generate_subtitle_full.py \
-  2-echo-delta/videos/meetup_02_동훈님.mov \
+  2-echo-delta/videos/raw/meetup_02_동훈님.mov \
   "2-echo-delta/slides/2-이동훈-myrealtrip-donghoon-ailab.pdf"
 
 # 3. 동운님 (64MB)
 python generate_subtitle_full.py \
-  2-echo-delta/videos/meetup_02_동운님.mov \
+  2-echo-delta/videos/raw/meetup_02_동운님.mov \
   "2-echo-delta/slides/3-최동운-계산기 압수 당해서.pdf"
 
 # 4. 패널 토론 (542MB) - This will take longer!
 python generate_subtitle_full.py \
-  2-echo-delta/videos/meetup_02_패널.mov
+  2-echo-delta/videos/raw/meetup_02_패널.mov
 ```
 
 ## Troubleshooting
