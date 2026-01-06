@@ -57,7 +57,7 @@ arguments:
 └───┬────┘ └───┬────┘
     ▼         ▼
 en/{name}    burnin_output/
-_en.srt      {name}_burnin.mp4
+_en.srt      {video_name}_burnin.mp4
     └────┬────┘
          ▼
 ┌─────────────────────────────────────────────────────┐
@@ -128,7 +128,7 @@ Task: AskUserQuestion
   - 영상: cropped/meetup_02_서진님_cropped.mov (또는 raw/...)
   - 출력:
     - 영어 자막: subtitles/en/meetup_02_서진님_corrected_en.srt
-    - 번인 영상: burnin_output/meetup_02_서진님_burnin.mp4
+    - 번인 영상: burnin_output/meetup_02_서진님_cropped_burnin.mp4
     - ASS 파일: subtitles/ass/meetup_02_서진님_corrected.ass
 옵션:
   - 진행
@@ -150,7 +150,7 @@ Prompt: |
   다음 자막을 영상에 번인해주세요.
   - video_path: {video_path}
   - srt_path: {srt_path}
-  - output_path: burnin_output/{video_stem}_burnin.mp4
+  - output_path: burnin_output/{video_name}_burnin.mp4  # 영상 파일명 기준
   - ass_output_dir: subtitles/ass/
 ```
 
@@ -167,7 +167,7 @@ Prompt: |
 | 유형 | 파일 경로 |
 |------|----------|
 | 영어 자막 | subtitles/en/meetup_02_서진님_corrected_en.srt |
-| 번인 영상 | burnin_output/meetup_02_서진님_burnin.mp4 |
+| 번인 영상 | burnin_output/meetup_02_서진님_cropped_burnin.mp4 |
 
 ### Translator 결과
 - 번역 세그먼트: {count}개
@@ -186,10 +186,13 @@ Prompt: |
 
 ## 출력 경로
 
+- `{basename}`: SRT 파일명에서 확장자 제거 (예: `meetup_02_서진님_corrected`)
+- `{video_name}`: 영상 파일명에서 확장자 제거 (예: `meetup_02_서진님_cropped`)
+
 | 출력 | 경로 |
 |------|------|
 | 영어 자막 | `subtitles/en/{basename}_en.srt` |
-| 번인 영상 | `burnin_output/{basename}_burnin.mp4` |
+| 번인 영상 | `burnin_output/{video_name}_burnin.mp4` |
 | ASS 파일 | `subtitles/ass/{basename}.ass` |
 
 ## 예시
@@ -219,6 +222,6 @@ Claude: 업로드 준비 완료!
 ## 주의사항
 
 1. **사전 조건**: `/video-subtitle`로 교정된 SRT 파일이 있어야 함
-2. **영상 파일**: raw/ 디렉토리에 원본 영상이 있어야 burnin 가능
+2. **영상 파일**: cropped/ 또는 raw/ 디렉토리에 영상이 있어야 burnin 가능 (cropped 우선)
 3. **폰트**: `Noto Sans CJK KR` 폰트 설치 필요 (burnin용)
 4. **처리 시간**: 영상 길이에 따라 burnin 시간 소요
