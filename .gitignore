@@ -1,0 +1,23 @@
+# Environment
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output files (large binaries)
+2-echo-delta/videos/burnin_output/
+
+# Temp files
+2-echo-delta/videos/_temp/
