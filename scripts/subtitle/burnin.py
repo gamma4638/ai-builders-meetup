@@ -200,8 +200,11 @@ def main():
 
     print(f"영상 해상도: {width}x{height}")
 
-    # ASS 파일 생성
-    ass_path = str(Path(srt_path).with_suffix('.ass'))
+    # ASS 파일 생성 (subtitles/ass/ 디렉토리에 저장)
+    srt_file = Path(srt_path)
+    ass_dir = srt_file.parent.parent / "ass"  # subtitles/ass/
+    ass_dir.mkdir(exist_ok=True)
+    ass_path = str(ass_dir / srt_file.with_suffix('.ass').name)
     print(f"\n=== SRT -> ASS 변환 중 ===")
 
     try:

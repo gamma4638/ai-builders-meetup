@@ -60,7 +60,12 @@ arguments:
          ▼
 ┌─────────────────┐
 │ subtitle-       │  발표자료 기반 STT 오류 교정
-│ corrector       │  → 최종 SRT
+│ corrector       │  → _corrected.srt
+└────────┬────────┘  [reference 있을 때만]
+         ▼
+┌─────────────────┐
+│ subtitle-       │  발표자료 기반 품질 검증
+│ validator       │  → _validation.json/md
 └────────┬────────┘  [reference 있을 때만]
          ▼
 ┌─────────────────┐
@@ -70,7 +75,21 @@ arguments:
 
 ## 실행 단계
 
-### Step 1: 자막 생성 (subtitle-generator)
+### Step 0: 입력 확인 및 사용자 질문
+
+입력에 따라 시작 단계 결정:
+
+| 입력 | 시작 단계 |
+|------|----------|
+| `--video` 있음 | Step 1 (자막 생성)부터 |
+| `--srt` 있음 | Step 2 (중복 정리)부터 |
+| 둘 다 없음 | 사용자에게 질문 |
+
+**둘 다 없을 때 질문 예시:**
+- "영상 파일에서 새로 자막을 생성할까요, 아니면 기존 SRT 파일을 정리/교정할까요?"
+- 사용자 선택에 따라 파일 경로 확인 후 진행
+
+### Step 1: 자막 생성 (subtitle-generator) - video 있을 때만
 
 ```
 Task: video-subtitle:subtitle-generator
@@ -89,7 +108,7 @@ Prompt: |
 Task: video-subtitle:subtitle-cleaner
 Prompt: |
   다음 자막 파일에서 중복과 hallucination을 정리해주세요.
-  - srt_path: {output_from_step1}
+  - srt_path: {$srt 또는 output_from_step1}
 ```
 
 ### Step 3: STT 교정 (subtitle-corrector) - reference가 있을 때만
@@ -102,33 +121,59 @@ Prompt: |
   - reference_path: $reference
 ```
 
+출력: `{basename}_corrected.srt`
+
+### Step 4: 품질 검증 (subtitle-validator) - reference가 있을 때만
+
+```
+Task: video-subtitle:subtitle-validator
+Prompt: |
+  다음 자막 파일을 발표자료와 비교하여 검증해주세요.
+  - srt_path: {output_from_step3}
+  - reference_path: $reference
+```
+
+출력:
+- `{basename}_validation.json` - 프로그래밍/자동화용
+- `{basename}_validation.md` - 사람이 읽는 보고서
+
 ## 예시
 
-### 입력
+### 예시 1: 영상에서 자막 생성
 ```
-/video-subtitle --video community/ai-builders-meetup/2-echo-delta/videos/meetup_02_서진님.mp4 --reference community/ai-builders-meetup/2-echo-delta/slides/1-김서진-AI-Native.pdf
+/video-subtitle --video 2-echo-delta/videos/meetup_02_서진님.mp4 --reference 2-echo-delta/slides/1-김서진-AI-Native.pdf
+```
+
+### 예시 2: 기존 SRT 파일 교정
+```
+/video-subtitle --srt 2-echo-delta/videos/meetup_02_서진님.srt --reference 2-echo-delta/slides/1-김서진-AI-Native.pdf
 ```
 
 ### 출력
 ```
-## 자막 생성 완료
+## 자막 처리 완료
 
-### 1. 자막 추출
+### 1. 자막 추출 (video가 있을 때만)
 - 입력: meetup_02_서진님.mp4 (9.8분)
 - 출력: meetup_02_서진님.srt
 - 세그먼트: 116개
-- 소요: 4분 30초
 
 ### 2. 중복 정리
 - 원본: 116개 → 정리 후: 81개
 - 제거: 35개 (30%)
 
-### 3. STT 교정
+### 3. STT 교정 (reference가 있을 때만)
 - 발견된 오류: 23개
 - 수정 완료: 23개
 
+### 4. 품질 검증 (reference가 있을 때만)
+- 총 이슈: 3개 (High: 0, Medium: 2, Low: 1)
+- 검증 보고서: meetup_02_서진님_validation.md
+
 ### 최종 파일
-community/ai-builders-meetup/2-echo-delta/videos/meetup_02_서진님.srt
+- 자막: 2-echo-delta/videos/meetup_02_서진님_corrected.srt
+- 검증: 2-echo-delta/videos/meetup_02_서진님_validation.json
+- 보고서: 2-echo-delta/videos/meetup_02_서진님_validation.md
 ```
 
 ## 시스템 요구사항
@@ -140,6 +185,7 @@ community/ai-builders-meetup/2-echo-delta/videos/meetup_02_서진님.srt
 
 ## 지원 형식
 
-- 입력: mp4, mov, mkv, webm, avi
+- 영상 입력: mp4, mov, mkv, webm, avi
+- 자막 입력: srt (기존 자막 파일)
 - 출력: srt
 - 발표자료: pdf

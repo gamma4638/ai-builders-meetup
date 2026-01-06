@@ -77,9 +77,9 @@ python scripts/subtitle/generate.py "2-echo-delta/videos/{영상파일}.mov"
    ```
 2. **처리 시간**: 10분 영상당 약 15-20분 소요 (large-v3 모델)
 3. **메모리**: large-v3 모델은 약 10GB VRAM 필요
-4. **다음 단계**:
-   - `scripts/subtitle/cleaner.py`로 중복/hallucination 제거
-   - PDF 참조하여 전문용어 교정
+4. **다음 단계**: `/video-subtitle` 스킬 사용
+   - `--srt`로 기존 자막 파일 지정하면 정리/교정부터 시작
+   - `--reference`로 발표자료 지정하면 전문용어 교정 및 검증
 
 ---
 
@@ -101,15 +101,68 @@ ai-builders-meetup/
 │       └── burnin.py           # ffmpeg burn-in
 ├── SUBTITLE_DESIGN_GUIDE.md # 자막 하드코딩 ffmpeg/ASS 스타일 가이드
 └── .claude/
-    └── skills/             # Claude Code Skills
-        ├── video-subtitle/ # 자막 생성 스킬
-        ├── speaker-guide/  # 스피커 가이드 생성
-        ├── clarify/        # 요구사항 구체화
-        └── panel-talk-questions/
+    ├── skills/             # Claude Code Skills (진입점)
+    │   ├── video-subtitle/ # 자막 생성 스킬
+    │   ├── speaker-guide/  # 스피커 가이드 생성
+    │   ├── clarify/        # 요구사항 구체화
+    │   └── panel-talk-questions/
+    └── agents/             # 스킬에서 호출하는 에이전트
+        └── video-subtitle/
+            ├── subtitle-generator.md   # Whisper로 자막 생성
+            ├── subtitle-cleaner.md     # 중복/hallucination 제거
+            ├── subtitle-corrector.md   # 전문용어 교정
+            ├── subtitle-validator.md   # 품질 검증 보고서 생성
+            └── subtitle-burnin.md      # 영상에 자막 하드코딩
 ```
 
 ## Skills 사용법
 
 - `/video-subtitle` - 영상 자막 생성 및 교정
+  - `--video`: 영상 파일 경로 (새로 생성시)
+  - `--srt`: 기존 자막 파일 경로 (정리/교정부터 시작시)
+  - `--reference`: 발표자료 PDF (교정/검증용)
+  - 워크플로우: generator → cleaner → corrector → validator
 - `/speaker-guide` - 스피커 가이드 문서 생성
 - `/clarify` - 요구사항 구체화 (질문을 통해 정리)
+
+---
+
+## Codex 코드 리뷰 시스템
+
+커밋 시 자동으로 OpenAI Codex CLI를 통해 코드 리뷰가 실행됩니다.
+
+### 설치
+
+```bash
+npm i -g @openai/codex
+```
+
+### 동작 방식
+
+1. `git commit` 명령 감지 (PreToolUse Hook)
+2. staged 파일 중 코드 파일만 필터링
+3. Codex CLI로 리뷰 실행
+4. `.reviews/YYYY-MM-DD/{hash}_{timestamp}.md`에 보고서 저장
+5. 결과 요약 출력 후 커밋 진행 (차단 없음)
+
+### 리뷰 파일 위치
+
+```
+.reviews/
+├── 2026-01-06/
+│   ├── abc1234_143022.md
+│   └── def5678_152145.md
+└── ...
+```
+
+### 최근 리뷰 확인
+
+```bash
+ls -lt .reviews/$(date +%Y-%m-%d)/ | head -5
+```
+
+### 리뷰 스킵
+
+```bash
+export SKIP_CODEX_REVIEW=1
+```
