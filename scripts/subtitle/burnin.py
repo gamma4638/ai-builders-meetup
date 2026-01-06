@@ -202,7 +202,12 @@ def main():
     # Set output path
     if not output_path:
         video_file = Path(video_path)
-        output_path = str(video_file.parent / f"{video_file.stem}_drawtext.mp4")
+        output_dir = Path("burnin_output")
+        output_dir.mkdir(exist_ok=True)
+        output_path = str(output_dir / f"{video_file.stem}_burnin.mp4")
+    else:
+        # Ensure output directory exists
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Output: {output_path}")
     print(f"\nProcessing...")
