@@ -86,7 +86,7 @@ arguments:
          ▼
 ┌─────────────────┐
 │ subtitle-       │  한국어 → 영어 번역
-│ translator      │  → _en.srt
+│ translator      │  → en/_en.srt
 └────────┬────────┘  [--translate 있을 때만]
          ▼
 ┌─────────────────┐
@@ -210,7 +210,7 @@ Prompt: |
   - srt_path: {output_from_step3 또는 step4}
 ```
 
-출력: `{basename}_en.srt`
+출력: `subtitles/en/{basename}_en.srt`
 
 ### Step 6: 통합 보고서 생성
 
@@ -307,9 +307,9 @@ Write: {basename}_report.md
 - 보고서: meetup_02_서진님_report.md
 
 ### 최종 파일
-- 자막 (한국어): 2-echo-delta/videos/meetup_02_서진님_corrected.srt
-- 자막 (영어): 2-echo-delta/videos/meetup_02_서진님_corrected_en.srt
-- 보고서: 2-echo-delta/videos/meetup_02_서진님_report.md
+- 자막 (한국어): 2-echo-delta/videos/subtitles/corrected/meetup_02_서진님_corrected.srt
+- 자막 (영어): 2-echo-delta/videos/subtitles/en/meetup_02_서진님_corrected_en.srt
+- 보고서: 2-echo-delta/videos/subtitles/meetup_02_서진님_report.md
 ```
 
 ## 시스템 요구사항

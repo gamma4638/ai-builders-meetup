@@ -112,12 +112,14 @@ about AI agents.
 ### 5. 파일 저장
 
 ```
-Write: {srt_path의 dirname}/{basename}_en.srt
+Write: {subtitles_dir}/en/{basename}_en.srt
 ```
 
-파일명 규칙:
-- 입력: `meetup_02_서진님_corrected.srt`
-- 출력: `meetup_02_서진님_corrected_en.srt`
+**출력 경로 규칙:**
+- 입력: `subtitles/corrected/meetup_02_서진님_corrected.srt`
+- 출력: `subtitles/en/meetup_02_서진님_corrected_en.srt`
+
+`en/` 디렉토리가 없으면 생성한다.
 
 ## 출력 형식
 
@@ -140,7 +142,7 @@ Write: {srt_path의 dirname}/{basename}_en.srt
 ```
 
 **출력 파일:**
-- `{basename}_en.srt` - 영어 번역 자막 (동일 디렉토리)
+- `subtitles/en/{basename}_en.srt` - 영어 번역 자막
 
 ## 판단 원칙
 
