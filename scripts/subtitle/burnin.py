@@ -130,9 +130,9 @@ def build_drawtext_filter(cues, width, height, font_path):
     base_height = 1080
     scale = height / base_height
 
-    font_size = int(32 * scale)
-    box_padding = int(12 * scale)
-    margin_bottom = int(50 * scale)
+    font_size = int(38 * scale)
+    box_padding = int(14 * scale)
+    margin_bottom = int(160 * scale)
     max_chars = int(width * 0.8 / (font_size * 0.6))  # Approximate char width
 
     filters = []
