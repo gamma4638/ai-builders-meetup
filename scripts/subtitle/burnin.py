@@ -7,7 +7,32 @@ Supports multi-line text with a single unified box.
 import re
 import sys
 import subprocess
+import unicodedata
+import tempfile
 from pathlib import Path
+
+
+def normalize_path(path_str):
+    """NFD/NFC 정규화 불일치 해결을 위한 경로 정규화"""
+    path = Path(path_str)
+    if path.exists():
+        return str(path)
+
+    # NFC/NFD 둘 다 시도
+    for form in ['NFC', 'NFD']:
+        normalized = Path(unicodedata.normalize(form, str(path)))
+        if normalized.exists():
+            return str(normalized)
+
+    # 디렉토리 순회로 찾기
+    parent = path.parent
+    if parent.exists():
+        target = unicodedata.normalize('NFC', path.name)
+        for item in parent.iterdir():
+            if unicodedata.normalize('NFC', item.name) == target:
+                return str(item)
+
+    return str(path)  # 찾지 못하면 원본 반환
 
 
 def parse_srt(srt_path):
@@ -165,8 +190,8 @@ def main():
         print("Usage: python burnin_drawtext.py <video_path> <srt_path> [output_path]")
         sys.exit(1)
 
-    video_path = sys.argv[1]
-    srt_path = sys.argv[2]
+    video_path = normalize_path(sys.argv[1])
+    srt_path = normalize_path(sys.argv[2])
     output_path = sys.argv[3] if len(sys.argv) > 3 else None
 
     if not Path(video_path).exists():
@@ -212,16 +237,23 @@ def main():
     print(f"Output: {output_path}")
     print(f"\nProcessing...")
 
-    # Run ffmpeg
-    cmd = [
-        'ffmpeg', '-y',
-        '-i', video_path,
-        '-vf', vf,
-        '-c:a', 'copy',
-        output_path
-    ]
+    # Use filter_complex_script for large filters (avoid argument list too long)
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        # Write filter as filter_complex format
+        f.write(f"[0:v]{vf}[out]")
+        filter_script = f.name
 
     try:
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', video_path,
+            '-filter_complex_script', filter_script,
+            '-map', '[out]',
+            '-map', '0:a?',
+            '-c:a', 'copy',
+            output_path
+        ]
+
         subprocess.run(cmd, check=True, capture_output=True)
         size_mb = Path(output_path).stat().st_size / (1024 * 1024)
         print(f"\n=== Complete ===")
@@ -230,6 +262,9 @@ def main():
     except subprocess.CalledProcessError as e:
         print(f"Error: {e.stderr.decode()}")
         sys.exit(1)
+    finally:
+        # Clean up temp file
+        Path(filter_script).unlink(missing_ok=True)
 
 
 if __name__ == '__main__':

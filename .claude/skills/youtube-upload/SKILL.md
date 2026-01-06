@@ -6,13 +6,13 @@ description: |
   발표자료(PDF) + 자막(SRT)을 참조하여 제목/설명 자동 생성.
 arguments:
   - name: video
-    description: 업로드할 영상 파일 경로 (필수)
-    required: true
+    description: 업로드할 영상 파일 경로 (미지정 시 burnin_output/에서 검색)
+    required: false
   - name: subtitle
-    description: 자막 파일 경로 (영어 SRT, 선택)
+    description: 자막 파일 경로 (미지정 시 subtitles/en/에서 매칭)
     required: false
   - name: reference
-    description: 발표자료(PDF) 경로 (제목/설명 생성용, 선택)
+    description: 발표자료(PDF) 경로 (미지정 시 slides/에서 매칭)
     required: false
   - name: privacy
     description: 공개 설정 (private/unlisted/public, 기본값 private)
@@ -32,7 +32,10 @@ arguments:
 ## 사용법
 
 ```bash
-# 기본 업로드 (private)
+# 기본 업로드 (burnin_output/에서 영상 선택)
+/youtube-upload
+
+# 영상 직접 지정
 /youtube-upload --video /path/to/video.mp4
 
 # 자막 포함 업로드
@@ -57,8 +60,15 @@ arguments:
 └────────┬────────────────────────────────────────────┘
          ▼
 ┌─────────────────────────────────────────────────────┐
-│                  Step 1: 입력 검증                   │
-│  영상 존재 확인, 자막/발표자료 확인                    │
+│                  Step 1: 파일 검색                   │
+│  --video 미지정 시 burnin_output/에서 검색           │
+│  --subtitle 미지정 시 subtitles/en/에서 매칭         │
+│  --reference 미지정 시 slides/에서 매칭              │
+└────────┬────────────────────────────────────────────┘
+         ▼
+┌─────────────────────────────────────────────────────┐
+│           Step 2: 입력 확인 (AskUserQuestion)        │
+│  선택된 파일 표시, Proceed/Select different/Cancel   │
 └────────┬────────────────────────────────────────────┘
          ▼
 ┌─────────────────┐
@@ -101,14 +111,60 @@ YouTube API 인증이 필요합니다.
 4. 브라우저에서 계정 선택 및 권한 허용
 ```
 
-### Step 1: 입력 검증
+### Step 1: 파일 검색
 
-파일 존재 확인:
-- `--video`: 필수, 파일 존재 확인
-- `--subtitle`: 선택, 있으면 파일 존재 확인
-- `--reference`: 선택, 있으면 파일 존재 확인
+인자 미지정 시 기본 디렉토리에서 파일 검색:
 
-### Step 2: 메타데이터 생성 (metadata-generator)
+**--video 미지정 시:**
+```bash
+# burnin_output/ 디렉토리에서 .mp4 파일 목록 조회
+ls 2-echo-delta/videos/burnin_output/*.mp4
+```
+
+**--subtitle 미지정 시:**
+```bash
+# subtitles/en/ 디렉토리에서 영상명과 매칭되는 자막 검색
+# 예: meetup_02_서진님_burnin.mp4 → meetup_02_서진님_corrected_en.srt
+ls 2-echo-delta/videos/subtitles/en/*.srt
+```
+
+**--reference 미지정 시:**
+```bash
+# slides/ 디렉토리에서 발표자명으로 매칭
+# 예: 서진님 → 1-김서진-*.pdf
+ls 2-echo-delta/slides/*.pdf
+```
+
+### Step 2: 입력 확인 (AskUserQuestion)
+
+검색된 파일을 사용자에게 확인:
+
+```
+AskUserQuestion:
+  Question: "Proceed with YouTube upload?"
+  Header: "Upload"
+
+  Display in question text:
+    Video: burnin_output/meetup_02_서진님_burnin.mp4
+    Subtitle (EN): subtitles/en/meetup_02_서진님_corrected_en.srt
+    Reference: slides/1-김서진-AI-Native.pdf
+    Privacy: private
+
+  Options:
+    - label: "Proceed"
+      description: "Upload with these files"
+    - label: "Select different"
+      description: "Choose different files manually"
+    - label: "Cancel"
+      description: "Cancel upload"
+```
+
+**Select different 선택 시:**
+- burnin_output/ 내 파일 목록 표시
+- 사용자가 선택하면 매칭되는 subtitle/reference 재검색
+- Step 2 반복
+
+### Step 3: 메타데이터 생성 (metadata-generator)
 
 `--title` 또는 `--description` 미지정 시:
 
@@ -121,7 +177,7 @@ Prompt: |
   - subtitle_path: $subtitle (있으면)
 ```
 
-### Step 3: 영상 업로드 (youtube-uploader)
+### Step 4: 영상 업로드 (youtube-uploader)
 
 ```
 Task: youtube-upload:youtube-uploader
@@ -134,7 +190,7 @@ Prompt: |
   - subtitle_path: $subtitle (있으면)
 ```
 
-### Step 4: 결과 보고
+### Step 5: 결과 보고
 
 ```markdown
 ## 유튜브 업로드 완료
@@ -217,7 +273,20 @@ python scripts/youtube/auth.py
 
 ## 예시
 
-### 예시 1: 밋업 영상 업로드
+### 예시 1: 파일 미지정 (자동 검색)
+
+```bash
+/youtube-upload
+```
+
+**실행 흐름:**
+1. burnin_output/ 디렉토리에서 .mp4 파일 목록 표시
+2. 사용자가 파일 선택 (또는 첫 번째 파일 기본 선택)
+3. 매칭되는 subtitle, reference 자동 검색
+4. AskUserQuestion으로 확인
+5. 업로드 진행
+
+### 예시 2: 밋업 영상 업로드
 
 ```bash
 # burnin 영상 (한국어 자막 하드코딩) + 영어 자막 (YouTube 자막 트랙)
