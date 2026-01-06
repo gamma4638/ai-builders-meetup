@@ -8,6 +8,7 @@ import sys
 import os
 import re
 import unicodedata
+from pathlib import Path
 
 def parse_srt(content):
     """Parse SRT content into list of segments"""
@@ -178,7 +179,18 @@ def main():
 
     srt_path = sys.argv[1]
     pdf_path = sys.argv[2] if len(sys.argv) >= 3 else None
-    output_path = sys.argv[3] if len(sys.argv) >= 4 else srt_path
+
+    # 출력 경로 설정 (subtitles/corrected/ 디렉토리에 저장)
+    if len(sys.argv) >= 4:
+        output_path = sys.argv[3]
+    else:
+        srt_file = Path(srt_path)
+        # subtitles 디렉토리 찾기: srt가 subtitles/raw/ 에 있음
+        subtitles_dir = srt_file.parent.parent  # subtitles/
+        corrected_dir = subtitles_dir / "corrected"
+        corrected_dir.mkdir(exist_ok=True)
+        basename = srt_file.stem
+        output_path = str(corrected_dir / f"{basename}_corrected.srt")
 
     if not os.path.exists(srt_path):
         print(f"Error: SRT file not found: {srt_path}")

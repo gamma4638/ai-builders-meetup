@@ -36,7 +36,8 @@ arguments:
 ┌─────────────────────────────────────────────────────┐
 │                  영상 파일 추론                      │
 │  corrected/meetup_02_서진님_corrected.srt           │
-│      → raw/meetup_02_서진님.mov                     │
+│      → 1순위: cropped/meetup_02_서진님_cropped.mov  │
+│      → 2순위: raw/meetup_02_서진님.mov              │
 │  (매칭 실패 시 사용자에게 질문)                     │
 └────────┬────────────────────────────────────────────┘
          ▼
@@ -87,14 +88,26 @@ corrected/ 디렉토리에서 `*_corrected.srt` 파일 목록을 가져와 보�
 
 ### Step 2: 영상 파일 추론
 
-SRT 파일명에서 영상 파일 경로 추론:
+SRT 파일명에서 영상 파일 경로 추론 (cropped 우선, raw fallback):
 
 ```python
 # 매칭 로직
 srt_name = "meetup_02_서진님_corrected.srt"
 base_name = srt_name.replace("_corrected", "")  # meetup_02_서진님.srt
-video_name = base_name.replace(".srt", ".mov")  # meetup_02_서진님.mov
-video_path = f"raw/{video_name}"
+video_stem = base_name.replace(".srt", "")      # meetup_02_서진님
+
+# 1순위: cropped 영상
+cropped_path = f"cropped/{video_stem}_cropped.mov"
+# 2순위: raw 영상
+raw_path = f"raw/{video_stem}.mov"
+
+# 존재 여부 확인 (ls 또는 Glob)
+if exists(cropped_path):
+    video_path = cropped_path
+elif exists(raw_path):
+    video_path = raw_path
+else:
+    # 매칭 실패 → 사용자에게 질문
 ```
 
 매칭 실패 시 (파일 미존재):
@@ -112,10 +125,11 @@ Task: AskUserQuestion
 질문: 다음 설정으로 진행할까요?
 내용:
   - SRT: subtitles/corrected/meetup_02_서진님_corrected.srt
-  - 영상: raw/meetup_02_서진님.mov
+  - 영상: cropped/meetup_02_서진님_cropped.mov (또는 raw/...)
   - 출력:
     - 영어 자막: subtitles/en/meetup_02_서진님_corrected_en.srt
     - 번인 영상: burnin_output/meetup_02_서진님_burnin.mp4
+    - ASS 파일: subtitles/ass/meetup_02_서진님_corrected.ass
 옵션:
   - 진행
   - 취소
@@ -136,6 +150,8 @@ Prompt: |
   다음 자막을 영상에 번인해주세요.
   - video_path: {video_path}
   - srt_path: {srt_path}
+  - output_path: burnin_output/{video_stem}_burnin.mp4
+  - ass_output_dir: subtitles/ass/
 ```
 
 **중요**: 두 Task를 같은 메시지에서 병렬로 호출.
@@ -194,7 +210,7 @@ Claude: 어떤 자막 파일을 사용할까요?
 User: 4
 Claude: 다음 설정으로 진행할까요?
   - SRT: .../meetup_02_서진님_corrected.srt
-  - 영상: .../meetup_02_서진님.mov
+  - 영상: cropped/meetup_02_서진님_cropped.mov
 User: 진행
 (translator + burnin 병렬 실행)
 Claude: 업로드 준비 완료!

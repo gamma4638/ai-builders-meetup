@@ -74,9 +74,9 @@ arguments:
 └────────┬────────┘  [reference 있을 때만]
          ▼
 ┌─────────────────┐
-│ subtitle-       │  validator 제안 반영 (2차 교정)
+│ subtitle-       │  validator 결과 반영 (2차 교정)
 │ corrector (2차) │  → _corrected.srt 갱신
-└────────┬────────┘  [validator 제안 있을 때]
+└────────┬────────┘  [reference 있을 때 항상]
          ▼
 ┌─────────────────┐
 │ subtitle-       │  Claude + Codex 이중 검증
@@ -100,10 +100,12 @@ arguments:
 
 | 조건 | 필수 실행 단계 |
 |------|---------------|
-| video O, reference O | 0.5 → 1 → 2 → 3 → 4 → 4.5 → 5 (전체) |
+| video O, reference O | 0.5 → 1 → 2 → 3 → 4 → 4.1 → 4.5 → 5 (전체) |
 | video O, reference X | 0.5 → 1 → 2 → 4.5 → 5 |
-| srt O, reference O | 2 → 3 → 4 → 4.5 → 5 |
+| srt O, reference O | 2 → 3 → 4 → 4.1 → 4.5 → 5 |
 | srt O, reference X | 2 → 4.5 → 5 |
+
+**각 단계 완료 시 결과를 표시하고, 허락 없이 바로 다음 단계 진행.**
 
 **각 단계가 완료되면 즉시 다음 단계를 실행할 것. 사용자에게 "완료되었습니다" 같은 중간 보고 없이 다음 단계로 바로 진행.**
 
@@ -111,8 +113,9 @@ arguments:
 
 스킬 종료 전 반드시 확인:
 - [ ] Step 2 (cleaner) 완료
-- [ ] Step 3 (corrector) 완료 - reference 있을 때
+- [ ] Step 3 (corrector 1차) 완료 - reference 있을 때
 - [ ] Step 4 (validator) 완료 - reference 있을 때
+- [ ] Step 4.1 (corrector 2차) 완료 - reference 있을 때
 - [ ] Step 4.5 (qa) 완료 - **항상 실행**
 - [ ] Step 5 (보고서) 완료
 
@@ -202,6 +205,23 @@ Prompt: |
 ```
 
 출력: 구조화된 검증 결과 (통합 보고서에 포함)
+
+**완료 후**: 즉시 Step 4.1 (corrector 2차) 실행.
+
+### Step 4.1: 2차 교정 (subtitle-corrector) - reference 있을 때 항상
+
+validator 실행 후 결과를 corrector에 전달하여 2차 교정 수행:
+
+```
+Task: video-subtitle:subtitle-corrector
+Prompt: |
+  validator가 제안한 수정 사항을 반영해주세요.
+  - srt_path: {output_from_step3}
+  - reference_path: $reference
+  - validator_suggestions: {validator_output}
+```
+
+출력: `{basename}_corrected.srt` (갱신)
 
 **완료 후**: 즉시 Step 4.5 (subtitle-qa) 실행.
 

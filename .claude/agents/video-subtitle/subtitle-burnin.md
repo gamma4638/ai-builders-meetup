@@ -17,7 +17,8 @@ SRT 자막 파일을 영상에 하드인코딩하는 에이전트.
 프롬프트로 다음 정보를 받는다:
 - `video_path`: 동영상 파일 경로 (필수)
 - `srt_path`: SRT 자막 파일 경로 (필수)
-- `output_path`: 출력 영상 경로 (선택, 기본값: `{video}_burnin.mp4`)
+- `output_path`: 출력 영상 경로 (선택, 기본값: `burnin_output/{video_stem}_burnin.mp4`)
+- `ass_output_dir`: ASS 파일 출력 디렉토리 (선택, 기본값: `subtitles/ass/`)
 
 ## 스타일 가이드
 
@@ -156,6 +157,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 # 메인 실행
 video_path = "{video_path}"
 srt_path = "{srt_path}"
+ass_output_dir = "{ass_output_dir}"  # 기본값: subtitles/ass/
 
 # 영상 해상도 가져오기
 import subprocess
@@ -166,8 +168,11 @@ result = subprocess.run(
 )
 width, height = map(int, result.stdout.strip().split(','))
 
-# ASS 파일 생성
-ass_path = srt_path.rsplit('.', 1)[0] + '.ass'
+# ASS 파일 생성 (지정된 디렉토리에 저장)
+import os
+os.makedirs(ass_output_dir, exist_ok=True)
+srt_basename = Path(srt_path).stem  # meetup_02_서진님_corrected
+ass_path = os.path.join(ass_output_dir, srt_basename + '.ass')
 cues = parse_srt(srt_path)
 generate_ass(cues, width, height, ass_path)
 ```
@@ -175,8 +180,12 @@ generate_ass(cues, width, height, ass_path)
 ### 3. ffmpeg Burn-in
 
 ```bash
-# 출력 경로 설정
-output_path="${output_path:-${video_path%.*}_burnin.mp4}"
+# 출력 디렉토리 생성
+mkdir -p burnin_output
+
+# 출력 경로 설정 (기본값: burnin_output/{video_stem}_burnin.mp4)
+video_stem=$(basename "{video_path}" | sed 's/_cropped$//' | sed 's/\.[^.]*$//')
+output_path="${output_path:-burnin_output/${video_stem}_burnin.mp4}"
 
 # ASS 자막 burn-in
 ffmpeg -i "{video_path}" \
@@ -206,8 +215,8 @@ echo "완료: {output_path}"
 - 마진: {margin_v}px
 
 ### 파일 위치
-- ASS 파일: {ass_path}
-- 출력 영상: {output_path}
+- ASS 파일: subtitles/ass/{basename}.ass
+- 출력 영상: burnin_output/{video_stem}_burnin.mp4
 ```
 
 ## 주의사항
