@@ -9,6 +9,7 @@ import os
 import re
 import unicodedata
 from pathlib import Path
+import yaml
 
 def parse_srt(content):
     """Parse SRT content into list of segments"""
@@ -32,11 +33,34 @@ def parse_srt(content):
 
     return segments
 
+def load_glossary_from_yaml(yaml_path):
+    """YAML 용어집에서 교정 사전 로드"""
+    with open(yaml_path, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+
+    corrections = {}
+    for category in ['speakers', 'companies', 'ai_terms', 'tech_terms', 'business_terms', 'common_errors']:
+        if category in data:
+            for correct_term, variations in data[category].items():
+                if variations:
+                    corrections[correct_term] = variations
+
+    print(f"Loaded {len(corrections)} terms from glossary: {os.path.basename(yaml_path)}")
+    return corrections
+
+
 def extract_keywords_from_pdf(pdf_path):
     """
-    Extract technical terms from 건호님's B2B/AX presentation
-    Based on PDF content analysis
+    Extract technical terms from reference file
+    - .yaml/.yml: 용어집으로 처리
+    - .pdf: 기존 하드코딩 로직 (호환성 유지)
     """
+    # YAML 용어집이면 별도 처리
+    if pdf_path and pdf_path.endswith(('.yaml', '.yml')):
+        if os.path.exists(pdf_path):
+            return load_glossary_from_yaml(pdf_path)
+        print(f"Warning: Glossary not found: {pdf_path}")
+        return {}
     # Terms specific to 건호님's presentation about AX (AI Transformation)
     presentation_specific_terms = {
         # Core concepts from the presentation

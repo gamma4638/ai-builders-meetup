@@ -37,7 +37,7 @@
 | 동훈님 | `subtitles/corrected/meetup_02_동훈님_corrected.srt` | 완료 |
 | 동운님 | `subtitles/corrected/meetup_02_동운님_corrected.srt` | 완료 |
 | 서진님 | `subtitles/corrected/meetup_02_서진님_corrected.srt` | 완료 |
-| 패널 | - | 대기 |
+| 패널 | `subtitles/corrected/meetup_02_패널_corrected.srt` | 완료 |
 
 ### 영상-PDF 매칭
 
@@ -48,6 +48,7 @@
 | 동운님 발표 | `slides/3-최동운-계산기 압수 당해서...pdf` |
 | 건호님 발표 | `slides/4-신건호-AI Builder Meetup...pdf` |
 | 키노트 | `slides/0-정구봉-echo-delta-keynote.pdf` |
+| 패널 토론 | `terms/glossary.yaml` (통합 용어집) |
 
 ### 자막 생성 명령어
 
@@ -89,6 +90,8 @@ python scripts/subtitle/generate.py "2-echo-delta/videos/raw/{영상파일}.mov"
 ai-builders-meetup/
 ├── 2-echo-delta/           # 2회차 밋업
 │   ├── slides/             # 발표자료 PDF
+│   ├── terms/              # 용어집
+│   │   └── glossary.yaml   # 통합 용어집 (패널 토론용)
 │   ├── videos/             # 영상 및 자막
 │   │   ├── raw/            # 원본 영상 (.mov)
 │   │   ├── cropped/        # 크롭된 영상

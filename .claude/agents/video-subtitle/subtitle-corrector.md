@@ -16,7 +16,9 @@ color: green
 
 프롬프트로 다음 정보를 받는다:
 - `srt_path`: SRT 자막 파일 경로 (필수)
-- `reference_path`: 발표자료 경로 (PDF, 선택 - 1차/2차 교정 시)
+- `reference_path`: 발표자료 또는 용어집 경로 (선택)
+  - PDF 파일: 슬라이드 기반 교정 (하드코딩된 용어 사전 사용)
+  - YAML 파일: 통합 용어집 기반 교정 (패널 토론용)
 - `validator_suggestions`: validator가 제안한 수정 목록 (선택, 2차 교정용)
 - `qa_suggestions`: QA가 발견한 이슈 목록 (선택, 3차 교정용)
 
