@@ -15,6 +15,9 @@ arguments:
   - name: reference
     description: 발표자료(PDF) 경로 (선택, 교정 시 필요)
     required: false
+  - name: translate
+    description: 영어 번역 수행 여부 (선택, 기본값 false)
+    required: false
 ---
 
 # Video Subtitle Generator
@@ -36,6 +39,9 @@ arguments:
 
 # 기존 자막 + 발표자료 기반 교정
 /video-subtitle --srt /path/to/existing.srt --reference /path/to/slides.pdf
+
+# 기존 자막 + 발표자료 기반 교정 + 영어 번역
+/video-subtitle --srt /path/to/existing.srt --reference /path/to/slides.pdf --translate
 ```
 
 ## 워크플로우
@@ -72,6 +78,16 @@ arguments:
 │ subtitle-       │  발표자료 기반 품질 검증
 │ validator       │  → 추가 수정 제안
 └────────┬────────┘  [reference 있을 때만]
+         ▼
+┌─────────────────┐
+│ subtitle-       │  Claude + Codex 이중 검증
+│ qa              │  → 최종 품질 보고서
+└────────┬────────┘  [항상 실행]
+         ▼
+┌─────────────────┐
+│ subtitle-       │  한국어 → 영어 번역
+│ translator      │  → _en.srt
+└────────┬────────┘  [--translate 있을 때만]
          ▼
 ┌─────────────────┐
 │ 통합 보고서     │  각 단계 결과 수집
@@ -166,7 +182,37 @@ Prompt: |
 
 출력: 구조화된 검증 결과 (통합 보고서에 포함)
 
-### Step 5: 통합 보고서 생성
+### Step 4.5: 최종 품질 검증 (subtitle-qa) - 항상 실행
+
+```
+Task: video-subtitle:subtitle-qa
+Prompt: |
+  다음 자막 파일의 최종 품질을 검증해주세요.
+  - srt_path: {이전 단계 출력 파일}
+```
+
+출력: 구조화된 QA 결과 (통합 보고서에 포함)
+
+**검증 항목:**
+1. 문맥 이상 - 앞뒤와 맞지 않는 내용
+2. 짧은 자막 - 0.5초 미만 부자연스러운 자막
+3. 언어 품질 - 단어, 표기, 문장 호응 오류
+
+**검증 방식:**
+- Claude 1차 검증 → Codex CLI 2차 검증 → 결과 통합
+
+### Step 5: 영어 번역 (subtitle-translator) - --translate가 있을 때만
+
+```
+Task: video-subtitle:subtitle-translator
+Prompt: |
+  다음 한국어 자막을 영어로 번역해주세요.
+  - srt_path: {output_from_step3 또는 step4}
+```
+
+출력: `{basename}_en.srt`
+
+### Step 6: 통합 보고서 생성
 
 각 단계의 결과를 수집하여 하나의 보고서로 통합:
 
@@ -190,6 +236,8 @@ Write: {basename}_report.md
 | 중복 정리 | 116개 → 81개 (-35) |
 | STT 교정 | 23개 수정 |
 | 품질 검증 | 3개 제안 |
+| QA 검증 | 5개 이슈, 품질 8/10 |
+| 영어 번역 | 81개 세그먼트 번역 |
 
 ## 1. 중복 정리 (Cleaner)
 {cleaner_result}
@@ -199,6 +247,12 @@ Write: {basename}_report.md
 
 ## 3. 품질 검증 (Validator)
 {validator_result}
+
+## 4. QA 검증 (QA)
+{qa_result}
+
+## 5. 영어 번역 (Translator)
+{translator_result}
 ```
 
 출력: `{basename}_report.md`
@@ -213,6 +267,11 @@ Write: {basename}_report.md
 ### 예시 2: 기존 SRT 파일 교정
 ```
 /video-subtitle --srt 2-echo-delta/videos/subtitles/raw/meetup_02_서진님.srt --reference 2-echo-delta/slides/1-김서진-AI-Native.pdf
+```
+
+### 예시 3: 기존 SRT 파일 교정 + 영어 번역
+```
+/video-subtitle --srt 2-echo-delta/videos/subtitles/raw/meetup_02_서진님.srt --reference 2-echo-delta/slides/1-김서진-AI-Native.pdf --translate
 ```
 
 ### 출력
@@ -235,11 +294,21 @@ Write: {basename}_report.md
 ### 4. 품질 검증 (reference가 있을 때만)
 - 추가 제안: 3개 (High: 0, Medium: 2, Low: 1)
 
-### 5. 통합 보고서 생성
+### 4.5. QA 검증 (항상 실행)
+- Claude 발견: 3개, Codex 발견: 2개
+- 문맥 이상: 1개, 짧은 자막: 2개, 언어 품질: 2개
+- 품질 점수: 8/10
+
+### 5. 영어 번역 (--translate가 있을 때만)
+- 번역 세그먼트: 81개
+- 원어 유지 용어: RAG, MCP, LangChain, API 등
+
+### 6. 통합 보고서 생성
 - 보고서: meetup_02_서진님_report.md
 
 ### 최종 파일
-- 자막: 2-echo-delta/videos/meetup_02_서진님_corrected.srt
+- 자막 (한국어): 2-echo-delta/videos/meetup_02_서진님_corrected.srt
+- 자막 (영어): 2-echo-delta/videos/meetup_02_서진님_corrected_en.srt
 - 보고서: 2-echo-delta/videos/meetup_02_서진님_report.md
 ```
 

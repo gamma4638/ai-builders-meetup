@@ -33,10 +33,10 @@
 
 | 영상 | 최종 SRT 파일 | 상태 |
 |------|--------------|------|
-| 건호님 | `meetup_02_건호님_corrected.srt` | 완료 |
-| 동훈님 | `meetup_02_동훈님_corrected.srt` | 완료 |
-| 동운님 | `meetup_02_동운님_corrected.srt` | 완료 |
-| 서진님 | `meetup_02_서진님_cropped_corrected.srt` | 완료 |
+| 건호님 | `subtitles/corrected/meetup_02_건호님_corrected.srt` | 완료 |
+| 동훈님 | `subtitles/corrected/meetup_02_동훈님_corrected.srt` | 완료 |
+| 동운님 | `subtitles/corrected/meetup_02_동운님_corrected.srt` | 완료 |
+| 서진님 | `subtitles/corrected/meetup_02_서진님_corrected.srt` | 완료 |
 | 패널 | - | 대기 |
 
 ### 영상-PDF 매칭
@@ -92,7 +92,11 @@ ai-builders-meetup/
 │   ├── videos/             # 영상 및 자막
 │   │   ├── raw/            # 원본 영상 (.mov)
 │   │   ├── cropped/        # 크롭된 영상
-│   │   ├── subtitles/      # SRT/ASS 자막
+│   │   ├── subtitles/      # 자막 파일들
+│   │   │   ├── raw/        # 원본 SRT
+│   │   │   ├── corrected/  # 교정된 SRT
+│   │   │   ├── ass/        # ASS 포맷
+│   │   │   └── validation/ # 검증 보고서
 │   │   └── burnin_output/  # 자막 합성 영상
 │   └── speakers/           # 스피커 정보
 ├── scripts/
@@ -105,6 +109,9 @@ ai-builders-meetup/
 │       └── burnin.py           # ffmpeg burn-in
 ├── SUBTITLE_DESIGN_GUIDE.md # 자막 하드코딩 ffmpeg/ASS 스타일 가이드
 └── .claude/
+    ├── hooks/              # Claude Code Hooks
+    │   ├── codex-review.sh     # 커밋 시 코드 리뷰
+    │   └── suggest-commit.sh   # 커밋 메시지 제안
     ├── skills/             # Claude Code Skills (진입점)
     │   ├── video-subtitle/ # 자막 생성 스킬
     │   ├── speaker-guide/  # 스피커 가이드 생성
@@ -116,6 +123,8 @@ ai-builders-meetup/
             ├── subtitle-cleaner.md     # 중복/hallucination 제거
             ├── subtitle-corrector.md   # 전문용어 교정
             ├── subtitle-validator.md   # 품질 검증 보고서 생성
+            ├── subtitle-qa.md          # Claude + Codex 이중 검증
+            ├── subtitle-translator.md  # 한국어 → 영어 번역
             └── subtitle-burnin.md      # 영상에 자막 하드코딩
 ```
 
@@ -125,7 +134,8 @@ ai-builders-meetup/
   - `--video`: 영상 파일 경로 (새로 생성시)
   - `--srt`: 기존 자막 파일 경로 (정리/교정부터 시작시)
   - `--reference`: 발표자료 PDF (교정/검증용)
-  - 워크플로우: generator → cleaner → corrector → validator
+  - `--translate`: 영어 번역 수행 (선택, 기본값 false)
+  - 워크플로우: generator → cleaner → corrector → validator → qa → translator
 - `/speaker-guide` - 스피커 가이드 문서 생성
 - `/clarify` - 요구사항 구체화 (질문을 통해 정리)
 
