@@ -15,3 +15,6 @@ Thumbs.db
 
 # Output files (large binaries)
 2-echo-delta/videos/burnin_output/
+
+# Temp files
+2-echo-delta/videos/_temp/
