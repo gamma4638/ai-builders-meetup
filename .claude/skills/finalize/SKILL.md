@@ -18,9 +18,9 @@ Generate upload assets (English subtitles + burn-in video) from corrected Korean
 
 ```bash
 # Specify SRT file directly
-/finalize --srt 2-echo-delta/videos/subtitles/corrected/meetup_02_*.srt
+/finalize --srt 2-echo-delta/videos/subtitles/corrected/meetup_02_*_corrected.srt
 
-# If SRT not specified, select from corrected/ list
+# Interactive mode - search and confirm files
 /finalize
 ```
 
@@ -28,24 +28,17 @@ Generate upload assets (English subtitles + burn-in video) from corrected Korean
 
 ```
 +-----------------------------------------------------+
-|                    Input Check                       |
-|  --srt provided -> use that file                    |
-|  --srt missing  -> show corrected/ list and ask     |
+|              Step 1: Search Files                    |
+|  - Glob: subtitles/corrected/*_corrected.srt        |
+|  - Glob: cropped/*.mov or raw/*.mov                 |
 +--------+--------------------------------------------+
          v
 +-----------------------------------------------------+
-|                  Infer Video File                    |
-|  corrected/meetup_02_*_corrected.srt                |
-|      -> 1st: cropped/meetup_02_*_cropped.mov        |
-|      -> 2nd: raw/meetup_02_*.mov                    |
-|  (if no match, ask user)                            |
-+--------+--------------------------------------------+
-         v
-+-----------------------------------------------------+
-|               Confirm Before Running                 |
-|  - SRT: {srt_path}                                  |
-|  - Video: {video_path}                              |
-|  - Proceed?                                         |
+|              Step 2: Confirm Selection               |
+|  AskUserQuestion:                                   |
+|  - SRT: {found_srt_file}                            |
+|  - Video: {matched_video_file}                      |
+|  - "Proceed with these files?"                      |
 +--------+--------------------------------------------+
          v
     +----+----+
@@ -57,81 +50,84 @@ Generate upload assets (English subtitles + burn-in video) from corrected Korean
 +---+----+ +---+----+
     v         v
 en/{name}    burnin_output/
-_en.srt      {video_name}_burnin.mp4
+_en.srt      {video}_burnin.mp4
     +----+----+
          v
 +-----------------------------------------------------+
-|                    Report Results                    |
+|              Step 3: Report Results                  |
 |  - English subtitle: en/...                         |
 |  - Burn-in video: burnin_output/...                 |
-|  -> Ready for upload!                               |
 +-----------------------------------------------------+
 ```
 
 ## Steps
 
-### Step 1: Input Check and SRT Selection
+### Step 1: Search Files
 
-If `--srt` not provided, ask user to select:
+#### 1.1 Find SRT files
 
+If `--srt` provided, use that file directly.
+
+Otherwise, search for corrected SRT files:
+
+```bash
+ls 2-echo-delta/videos/subtitles/corrected/*_corrected.srt
 ```
-Task: AskUserQuestion
-Question: Which subtitle file to use?
-Options:
-  - meetup_02_*_corrected.srt (list from corrected/)
-```
 
-Get `*_corrected.srt` file list from corrected/ directory.
+#### 1.2 Find Video files
 
-### Step 2: Infer Video File
-
-Infer video path from SRT filename (prefer cropped, fallback to raw):
+For each SRT, infer matching video:
 
 ```python
-srt_name = "meetup_02_*_corrected.srt"
-base_name = srt_name.replace("_corrected", "")  # meetup_02_*.srt
-video_stem = base_name.replace(".srt", "")      # meetup_02_*
+# From: meetup_02_건호님_corrected.srt
+# Extract: meetup_02_건호님
 
-# 1st: cropped video
-cropped_path = f"cropped/{video_stem}_cropped.mov"
-# 2nd: raw video
-raw_path = f"raw/{video_stem}.mov"
+srt_name = "meetup_02_건호님_corrected.srt"
+video_stem = srt_name.replace("_corrected.srt", "")  # meetup_02_건호님
 
-if exists(cropped_path):
-    video_path = cropped_path
-elif exists(raw_path):
-    video_path = raw_path
-else:
-    # No match -> ask user
+# Search order:
+# 1st: cropped/{video_stem}_cropped.mov
+# 2nd: raw/{video_stem}.mov
 ```
 
-If no match:
-```
-Task: AskUserQuestion
-Question: Video file not found. Please enter path.
+```bash
+ls 2-echo-delta/videos/cropped/
+ls 2-echo-delta/videos/raw/
 ```
 
-### Step 3: Confirm Before Running
+### Step 2: Confirm Selection (AskUserQuestion)
 
-Ask user to confirm:
+**IMPORTANT**: Always confirm with user before proceeding.
+
+Show found files and ask for confirmation:
 
 ```
 Task: AskUserQuestion
-Question: Proceed with these settings?
-Content:
-  - SRT: subtitles/corrected/meetup_02_*_corrected.srt
-  - Video: cropped/meetup_02_*_cropped.mov (or raw/...)
-  - Output:
-    - English subtitle: subtitles/en/meetup_02_*_corrected_en.srt
-    - Burn-in video: burnin_output/meetup_02_*_cropped_burnin.mp4
+Question: "Proceed with these files for finalize?"
+
+Display:
+  SRT file: subtitles/corrected/meetup_02_건호님_corrected.srt
+  Video file: cropped/meetup_02_건호님_cropped.mov
+
+  Output will be:
+  - English subtitle: subtitles/en/meetup_02_건호님_corrected_en.srt
+  - Burn-in video: burnin_output/meetup_02_건호님_cropped_burnin.mp4
+
 Options:
   - Proceed
+  - Select different SRT
   - Cancel
 ```
 
-### Step 4: Parallel Execution
+If user selects "Select different SRT":
+- Show list of available SRT files from corrected/
+- Let user choose
+- Re-match video file
+- Confirm again
 
-Run both agents **simultaneously**:
+### Step 3: Parallel Execution
+
+Run both agents **simultaneously** in a single message:
 
 ```
 Task A: video-subtitle:subtitle-translator
@@ -144,12 +140,11 @@ Prompt: |
   Burn subtitles into video.
   - video_path: {video_path}
   - srt_path: {srt_path}
-  - output_path: burnin_output/{video_name}_burnin.mp4
 ```
 
 **IMPORTANT**: Call both Tasks in parallel in the same message.
 
-### Step 5: Report Results
+### Step 4: Report Results
 
 After both complete, summarize:
 
@@ -169,7 +164,7 @@ After both complete, summarize:
 ### Burnin Result
 - Resolution: {width}x{height}
 - Subtitle count: {count}
-- Style: drawtext single box (Noto Sans CJK KR)
+- Style: drawtext single box (Noto Sans CJK KR 38px)
 
 ### Upload Checklist
 - [ ] Review English subtitles
@@ -179,39 +174,41 @@ After both complete, summarize:
 
 ## Output Paths
 
-- `{basename}`: SRT filename without extension (e.g., `meetup_02_*_corrected`)
-- `{video_name}`: Video filename without extension (e.g., `meetup_02_*_cropped`)
-
 | Output | Path |
 |--------|------|
-| English subtitle | `subtitles/en/{basename}_en.srt` |
-| Burn-in video | `burnin_output/{video_name}_burnin.mp4` |
+| English subtitle | `subtitles/en/{srt_basename}_en.srt` |
+| Burn-in video | `burnin_output/{video_stem}_burnin.mp4` |
 
 ## Example
 
-### Example 1: Specify SRT directly
-```
-/finalize --srt 2-echo-delta/videos/subtitles/corrected/meetup_02_*_corrected.srt
-```
-
-### Example 2: Interactive selection
 ```
 > /finalize
-Claude: Which subtitle file to use?
-  1. meetup_02_*_corrected.srt
-  2. ...
-User: 1
-Claude: Proceed with these settings?
-  - SRT: .../meetup_02_*_corrected.srt
-  - Video: cropped/meetup_02_*_cropped.mov
+
+Claude: Searching for files...
+  Found SRT: subtitles/corrected/meetup_02_건호님_corrected.srt
+  Matched video: cropped/meetup_02_건호님_cropped.mov
+
+Claude: [AskUserQuestion]
+  Proceed with these files for finalize?
+  - SRT: meetup_02_건호님_corrected.srt
+  - Video: meetup_02_건호님_cropped.mov
+
+  [Proceed] [Select different SRT] [Cancel]
+
 User: Proceed
-(translator + burnin run in parallel)
+
+Claude: Starting parallel execution...
+  - Translator: translating 245 segments...
+  - Burnin: encoding video with subtitles...
+
 Claude: Upload Ready!
+  - English subtitle: subtitles/en/meetup_02_건호님_corrected_en.srt
+  - Burn-in video: burnin_output/meetup_02_건호님_cropped_burnin.mp4
 ```
 
 ## Notes
 
 1. **Prerequisite**: Corrected SRT from `/video-subtitle` must exist
-2. **Video file**: Must exist in cropped/ or raw/ for burn-in (prefers cropped)
+2. **Video matching**: Prefers cropped/ over raw/
 3. **Font**: `Noto Sans CJK KR` font required for burn-in
-4. **Processing time**: Burn-in time depends on video length
+4. **Processing time**: Burn-in depends on video length (~2-5 min for 10min video)
