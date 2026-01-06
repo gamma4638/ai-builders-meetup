@@ -153,8 +153,12 @@ def main():
     if len(sys.argv) >= 3:
         output_path = sys.argv[2]
     else:
-        base = os.path.splitext(video_path)[0]
-        output_path = f"{base}.srt"
+        # videos/raw/ → subtitles/raw/
+        video_dir = os.path.dirname(video_path)
+        video_basename = os.path.splitext(os.path.basename(video_path))[0]
+        subtitles_dir = os.path.join(os.path.dirname(video_dir), 'subtitles', 'raw')
+        os.makedirs(subtitles_dir, exist_ok=True)
+        output_path = os.path.join(subtitles_dir, f"{video_basename}.srt")
 
     # Step 1: Generate subtitles
     segment_count = generate_srt(video_path, output_path, language="ko", model="large-v3")

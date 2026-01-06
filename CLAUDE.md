@@ -114,6 +114,7 @@ ai-builders-meetup/
     │   └── suggest-commit.sh   # 커밋 메시지 제안
     ├── skills/             # Claude Code Skills (진입점)
     │   ├── video-subtitle/ # 자막 생성 스킬
+    │   ├── finalize/       # 업로드 준비물 완성 (번역+번인)
     │   ├── speaker-guide/  # 스피커 가이드 생성
     │   ├── clarify/        # 요구사항 구체화
     │   └── panel-talk-questions/
@@ -134,8 +135,11 @@ ai-builders-meetup/
   - `--video`: 영상 파일 경로 (새로 생성시)
   - `--srt`: 기존 자막 파일 경로 (정리/교정부터 시작시)
   - `--reference`: 발표자료 PDF (교정/검증용)
-  - `--translate`: 영어 번역 수행 (선택, 기본값 false)
-  - 워크플로우: generator → cleaner → corrector → validator → qa → translator
+  - 워크플로우: generator → cleaner → corrector → validator → qa
+- `/finalize` - 업로드 준비물 완성 (영어 번역 + 자막 번인 병렬 실행)
+  - `--srt`: 교정된 SRT 파일 경로 (미지정 시 corrected/ 목록에서 선택)
+  - 워크플로우: translator + burnin (병렬)
+  - 출력: `en/*_en.srt` + `burnin_output/*_burnin.mp4`
 - `/speaker-guide` - 스피커 가이드 문서 생성
 - `/clarify` - 요구사항 구체화 (질문을 통해 정리)
 

@@ -95,8 +95,7 @@ if ! command -v codex &> /dev/null; then
 fi
 
 # Codex 호출 (timeout 180초)
-CODEX_RESULT=$(timeout 180 cat <<'EOF' | codex -q -
-당신은 한국어 자막 품질 검증 전문가입니다.
+PROMPT="당신은 한국어 자막 품질 검증 전문가입니다.
 
 ## 검증 항목
 1. 문맥상 이상한 내용 - 앞뒤와 맞지 않는 부분
@@ -104,10 +103,10 @@ CODEX_RESULT=$(timeout 180 cat <<'EOF' | codex -q -
 3. 언어 품질 - 단어, 표기, 문장 호응 오류
 
 ## Claude 1차 검증 결과
-{claude_findings}
+${claude_findings}
 
 ## 자막 내용 (번호: 시작-종료 | 텍스트)
-{subtitle_content}
+${subtitle_content}
 
 ## 출력 형식 (Markdown)
 
@@ -122,8 +121,9 @@ Claude가 놓친 이슈:
 ### 전체 평가
 - 품질 점수: X/10
 - 요약: 한 줄 평가
-EOF
-)
+"
+
+CODEX_RESULT=$(timeout 180 codex exec "$PROMPT" --dangerously-bypass-approvals-and-sandbox)
 ```
 
 ### Phase 3: 결과 통합

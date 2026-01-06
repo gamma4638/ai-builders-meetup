@@ -200,9 +200,11 @@ def main():
 
     print(f"영상 해상도: {width}x{height}")
 
-    # ASS 파일 생성 (subtitles/ass/ 디렉토리에 저장)
+    # ASS 파일 생성 (videos/subtitles/ass/ 디렉토리에 저장)
     srt_file = Path(srt_path)
-    ass_dir = srt_file.parent.parent / "ass"  # subtitles/ass/
+    # subtitles 디렉토리 찾기: srt가 subtitles/raw/ 또는 subtitles/corrected/ 에 있음
+    subtitles_dir = srt_file.parent.parent  # subtitles/
+    ass_dir = subtitles_dir / "ass"
     ass_dir.mkdir(exist_ok=True)
     ass_path = str(ass_dir / srt_file.with_suffix('.ass').name)
     print(f"\n=== SRT -> ASS 변환 중 ===")
@@ -214,10 +216,13 @@ def main():
         print(f"Error: ASS 파일 생성 실패: {e}")
         sys.exit(1)
 
-    # 출력 경로 설정
+    # 출력 경로 설정 (videos/burnin_output/ 디렉토리에 저장)
     if not output_path:
-        video_stem = Path(video_path).stem
-        output_dir = Path(video_path).parent / "burnin_output"
+        video_file = Path(video_path)
+        video_stem = video_file.stem
+        # videos 디렉토리 찾기: 영상이 videos/raw/ 또는 videos/cropped/ 에 있음
+        videos_dir = video_file.parent.parent  # videos/
+        output_dir = videos_dir / "burnin_output"
         output_dir.mkdir(exist_ok=True)
         output_path = str(output_dir / f"{video_stem}_burnin.mp4")
 
