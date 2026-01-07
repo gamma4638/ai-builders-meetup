@@ -103,13 +103,14 @@ ai-builders-meetup/
 │   │   └── burnin_output/  # 자막 합성 영상
 │   └── speakers/           # 스피커 정보
 ├── scripts/
-│   └── subtitle/           # 자막 관련 스크립트
-│       ├── generate.py         # Whisper로 자막 생성
-│       ├── generate_api.py     # OpenAI API로 자막 생성
-│       ├── generate_full.py    # 전체 파이프라인
-│       ├── cleaner.py          # 중복/hallucination 제거
-│       ├── corrector.py        # 전문용어 교정
-│       └── burnin.py           # ffmpeg burn-in
+│   ├── subtitle/           # 자막 관련 스크립트
+│   │   ├── generate.py         # Whisper로 자막 생성
+│   │   ├── generate_api.py     # OpenAI API로 자막 생성
+│   │   └── burnin.py           # ffmpeg burn-in
+│   └── youtube/            # YouTube 업로드
+│       ├── auth.py             # OAuth 인증
+│       ├── upload.py           # 영상 업로드
+│       └── captions.py         # 자막 업로드
 ├── SUBTITLE_DESIGN_GUIDE.md # 자막 하드코딩 스타일 가이드
 └── .claude/
     ├── hooks/              # Claude Code Hooks
