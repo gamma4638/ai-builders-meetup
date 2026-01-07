@@ -2,6 +2,8 @@
 """
 Subtitle burn-in using ffmpeg drawtext filter.
 Supports multi-line text with a single unified box.
+
+Style specifications: see STYLE_GUIDE.md in this directory.
 """
 
 import re

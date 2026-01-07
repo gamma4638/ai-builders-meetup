@@ -106,12 +106,12 @@ ai-builders-meetup/
 │   ├── subtitle/           # 자막 관련 스크립트
 │   │   ├── generate.py         # Whisper로 자막 생성
 │   │   ├── generate_api.py     # OpenAI API로 자막 생성
-│   │   └── burnin.py           # ffmpeg burn-in
+│   │   ├── burnin.py           # ffmpeg burn-in
+│   │   └── STYLE_GUIDE.md      # 자막 하드코딩 스타일 가이드
 │   └── youtube/            # YouTube 업로드
 │       ├── auth.py             # OAuth 인증
 │       ├── upload.py           # 영상 업로드
 │       └── captions.py         # 자막 업로드
-├── SUBTITLE_DESIGN_GUIDE.md # 자막 하드코딩 스타일 가이드
 └── .claude/
     ├── hooks/              # Claude Code Hooks
     │   ├── codex-review.sh     # 커밋 시 코드 리뷰

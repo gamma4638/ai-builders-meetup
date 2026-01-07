@@ -21,6 +21,8 @@ Prompt parameters:
 
 ## Style
 
+See `scripts/subtitle/STYLE_GUIDE.md` for full specifications.
+
 - Font: Noto Sans CJK KR (38px at 1080p, scales with resolution)
 - Alignment: bottom-center
 - Text: white (#FFFFFF)
