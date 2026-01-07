@@ -3,7 +3,7 @@ name: video-subtitle:subtitle-validator
 description: |
   기존 자막 파일을 발표자료(PDF)와 비교하여 검증하고 추가 수정 제안을 생성하는 에이전트.
   자막 파일 수정 없이 검증 결과만 반환 (통합 보고서에 포함됨).
-tools: Bash, Read, Write, Glob
+tools: Bash, Read, Glob
 model: sonnet
 color: purple
 ---
@@ -101,7 +101,9 @@ Read: {srt_path}
 
 ## 주의사항
 
-1. **읽기 전용**: 이 agent는 자막 파일을 수정하지 않음
-2. **보수적 판단**: 확실한 오류만 high severity로 분류
-3. **근거 필수**: 모든 이슈에 발표자료 근거 명시
-4. **Corrector 보완**: Corrector가 놓친 이슈를 추가로 발견
+1. **검증만 수행**: 이 agent는 파일을 수정하지 않음. 수정은 corrector가 담당
+2. **Edit 도구 사용 금지**: Edit, Write 도구를 절대 사용하지 않음. Read와 Bash만 사용
+3. **보수적 판단**: 확실한 오류만 high severity로 분류
+4. **근거 필수**: 모든 이슈에 발표자료 근거 명시
+5. **Corrector 보완**: Corrector가 놓친 이슈를 추가로 발견
+6. **입력 파일 보호**: srt_path, reference_path 모두 읽기만 허용

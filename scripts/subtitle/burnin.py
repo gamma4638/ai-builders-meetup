@@ -1,255 +1,272 @@
 #!/usr/bin/env python3
 """
-SRT 자막을 ASS 형식으로 변환하고 ffmpeg으로 burn-in 하는 스크립트
-BizCafe 스타일 가이드 기반: SUBTITLE_DESIGN_GUIDE.md
+Subtitle burn-in using ffmpeg drawtext filter.
+Supports multi-line text with a single unified box.
+
+Style specifications: see STYLE_GUIDE.md in this directory.
 """
 
 import re
 import sys
 import subprocess
 import unicodedata
+import tempfile
 from pathlib import Path
 
 
+def normalize_path(path_str):
+    """NFD/NFC 정규화 불일치 해결을 위한 경로 정규화"""
+    path = Path(path_str)
+    if path.exists():
+        return str(path)
+
+    # NFC/NFD 둘 다 시도
+    for form in ['NFC', 'NFD']:
+        normalized = Path(unicodedata.normalize(form, str(path)))
+        if normalized.exists():
+            return str(normalized)
+
+    # 디렉토리 순회로 찾기
+    parent = path.parent
+    if parent.exists():
+        target = unicodedata.normalize('NFC', path.name)
+        for item in parent.iterdir():
+            if unicodedata.normalize('NFC', item.name) == target:
+                return str(item)
+
+    return str(path)  # 찾지 못하면 원본 반환
+
+
 def parse_srt(srt_path):
-    """SRT 파일 파싱"""
+    """Parse SRT file and return list of cues"""
     with open(srt_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # SRT 패턴: 번호, 시간, 텍스트
     pattern = r'(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n(.*?)(?=\n\n|\n\d+\n|\Z)'
     matches = re.findall(pattern, content, re.DOTALL)
 
     cues = []
     for idx, start, end, text in matches:
-        # ASS 형식으로 변환: , -> .
-        start_ass = start.replace(',', '.')
-        end_ass = end.replace(',', '.')
-        # 줄바꿈을 ASS 형식으로
-        text_ass = text.strip().replace('\n', '\\N')
-
+        start_sec = timecode_to_seconds(start)
+        end_sec = timecode_to_seconds(end)
+        text_clean = text.strip().replace('\n', ' ')
         cues.append({
             'index': int(idx),
-            'start': start_ass,
-            'end': end_ass,
-            'text': text_ass
+            'start': start_sec,
+            'end': end_sec,
+            'text': text_clean
         })
 
     return cues
 
 
-def format_ass_time(time_str):
-    """00:00:00.000 -> 0:00:00.00 (ASS 형식)"""
-    parts = time_str.replace('.', ':').split(':')
-    h, m, s, ms = int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])
-    cs = ms // 10  # centiseconds
-    return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
+def timecode_to_seconds(tc):
+    """Convert SRT timecode to seconds: 00:01:23,456 -> 83.456"""
+    tc = tc.replace(',', '.')
+    parts = tc.split(':')
+    h, m, s = int(parts[0]), int(parts[1]), float(parts[2])
+    return h * 3600 + m * 60 + s
 
 
-def estimate_text_size(text, font_size=18):
-    """
-    텍스트 크기 추정 (대략적)
-    실제로는 폰트 메트릭을 사용해야 정확하지만, 근사치로 계산
-    """
-    lines = text.split('\\N')
-
-    # 한글/영문 혼합 고려
-    max_chars = 0
-    for line in lines:
-        # 대략적으로 한글은 1.5배, 영문은 0.6배 너비
-        char_count = 0
-        for char in line:
-            if ord(char) > 127:  # 한글/한자 등
-                char_count += 1.5
-            else:
-                char_count += 0.6
-        max_chars = max(max_chars, char_count)
-
-    text_width = max_chars * font_size * 0.6
-    text_height = len(lines) * font_size * 1.4  # 줄 간격 포함
-
-    return text_width, text_height
+def escape_drawtext(text):
+    """Escape special characters for ffmpeg drawtext filter"""
+    # Escape for ffmpeg filter
+    text = text.replace('\\', '\\\\')
+    text = text.replace("'", "'\\''")
+    text = text.replace(':', '\\:')
+    text = text.replace('%', '\\%')
+    return text
 
 
-def generate_ass(cues, video_width, video_height, output_path):
-    """
-    ASS 파일 생성 (BizCafe 스타일)
-    - 멀티라인 자막을 단일 검은 박스로 감싸기
-    - bottom-center 정렬 (Alignment=2)
-    """
+def wrap_text(text, max_chars=40):
+    """Wrap text to multiple lines if needed"""
+    if len(text) <= max_chars:
+        return text
 
-    # 기본 설정 (1440x810 기준)
-    base_width = 1440
-    base_height = 810
+    words = text.split()
+    lines = []
+    current_line = []
+    current_len = 0
 
-    # 스케일 계산
-    scale_x = video_width / base_width
-    scale_y = video_height / base_height
-    scale = min(scale_x, scale_y)  # 더 작은 축 기준
+    for word in words:
+        if current_len + len(word) + 1 <= max_chars:
+            current_line.append(word)
+            current_len += len(word) + 1
+        else:
+            if current_line:
+                lines.append(' '.join(current_line))
+            current_line = [word]
+            current_len = len(word)
 
-    font_size = int(18 * scale)
-    pad_x = int(10 * scale)
-    pad_y = int(6 * scale)
-    margin_v = int(40 * scale)
+    if current_line:
+        lines.append(' '.join(current_line))
 
-    # 화면 중앙 X, 하단 기준 Y
-    cx = video_width // 2
-    y_base = video_height - margin_v
+    # Limit to 2 lines max
+    if len(lines) > 2:
+        lines = lines[:2]
+        lines[1] = lines[1][:max_chars-3] + '...' if len(lines[1]) > max_chars-3 else lines[1]
 
-    # ASS 헤더
-    ass_header = f"""[Script Info]
-Title: BizCafe Subtitles
-ScriptType: v4.00+
-PlayResX: {video_width}
-PlayResY: {video_height}
-WrapStyle: 0
+    return '\n'.join(lines)
 
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: BizCafeBG,Noto Sans CJK KR,{font_size},&H00000000,&H00000000,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,0,0,{margin_v},1
-Style: BizCafeText,Noto Sans CJK KR,{font_size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,0,0,{margin_v},1
 
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-"""
+def get_video_info(video_path):
+    """Get video width, height, duration"""
+    cmd = [
+        'ffprobe', '-v', 'error',
+        '-select_streams', 'v:0',
+        '-show_entries', 'stream=width,height',
+        '-of', 'csv=p=0',
+        video_path
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    width, height = map(int, result.stdout.strip().split(','))
+    return width, height
 
-    events = []
+
+def find_font():
+    """Find suitable CJK font"""
+    font_paths = [
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc',
+        '/System/Library/Fonts/AppleSDGothicNeo.ttc',
+    ]
+
+    for path in font_paths:
+        if Path(path).exists():
+            return path
+
+    # Try fc-match
+    try:
+        result = subprocess.run(
+            ['fc-match', '-f', '%{file}', 'NotoSansCJK'],
+            capture_output=True, text=True
+        )
+        if result.stdout.strip():
+            return result.stdout.strip()
+    except:
+        pass
+
+    return None
+
+
+def build_drawtext_filter(cues, width, height, font_path):
+    """Build ffmpeg drawtext filter chain"""
+
+    # Calculate sizes based on resolution
+    base_height = 1080
+    scale = height / base_height
+
+    font_size = int(38 * scale)
+    box_padding = int(14 * scale)
+    margin_bottom = int(160 * scale)
+    max_chars = int(width * 0.8 / (font_size * 0.6))  # Approximate char width
+
+    filters = []
 
     for cue in cues:
-        start = format_ass_time(cue['start'])
-        end = format_ass_time(cue['end'])
-        text = cue['text']
+        text = wrap_text(cue['text'], max_chars)
+        text_escaped = escape_drawtext(text)
 
-        # 텍스트 크기 측정
-        text_w, text_h = estimate_text_size(text, font_size)
-
-        # 박스 크기 계산
-        box_w = text_w + 2 * pad_x
-        box_h = text_h + 2 * pad_y
-        bw2 = int(box_w / 2)  # 반 너비
-        bh = int(box_h)       # 전체 높이
-
-        # BG 이벤트 (Layer 0) - 검은 박스
-        # 벡터 드로잉으로 직사각형 그리기
-        bg_event = (
-            f"Dialogue: 0,{start},{end},BizCafeBG,,0,0,0,,"
-            f"{{\\an2\\pos({cx},{y_base})\\p1\\bord0\\shad0\\1c&H000000&}}"
-            f"m -{bw2} -{bh} l {bw2} -{bh} l {bw2} 0 l -{bw2} 0"
+        # drawtext filter with box
+        f = (
+            f"drawtext="
+            f"text='{text_escaped}':"
+            f"fontfile='{font_path}':"
+            f"fontsize={font_size}:"
+            f"fontcolor=white:"
+            f"box=1:"
+            f"boxcolor=black:"
+            f"boxborderw={box_padding}:"
+            f"x=(w-text_w)/2:"
+            f"y=h-text_h-{margin_bottom}:"
+            f"enable='between(t,{cue['start']:.3f},{cue['end']:.3f})'"
         )
-        events.append(bg_event)
+        filters.append(f)
 
-        # TEXT 이벤트 (Layer 1) - 흰색 텍스트
-        text_event = (
-            f"Dialogue: 1,{start},{end},BizCafeText,,0,0,0,,"
-            f"{{\\an2\\pos({cx},{y_base})}}{text}"
-        )
-        events.append(text_event)
-
-    # 파일 쓰기
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(ass_header)
-        f.write('\n'.join(events))
-
-    print(f"ASS 파일 생성 완료: {output_path}")
-    print(f"  - 해상도: {video_width}x{video_height}")
-    print(f"  - 자막 개수: {len(cues)}개")
-    print(f"  - 폰트 크기: {font_size}px")
-    print(f"  - 패딩: {pad_x}px x {pad_y}px")
-    print(f"  - 하단 마진: {margin_v}px")
-
-    return output_path
+    return ','.join(filters)
 
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python burnin_subtitle.py <video_path> <srt_path> [output_path]")
+        print("Usage: python burnin_drawtext.py <video_path> <srt_path> [output_path]")
         sys.exit(1)
 
-    video_path = sys.argv[1]
-    srt_path = sys.argv[2]
+    video_path = normalize_path(sys.argv[1])
+    srt_path = normalize_path(sys.argv[2])
     output_path = sys.argv[3] if len(sys.argv) > 3 else None
 
-    # 파일명 NFC 정규화
-    video_path = unicodedata.normalize('NFC', video_path)
-    srt_path = unicodedata.normalize('NFC', srt_path)
-
-    # 파일 존재 확인
     if not Path(video_path).exists():
-        print(f"Error: 영상 파일을 찾을 수 없습니다: {video_path}")
+        print(f"Error: Video not found: {video_path}")
         sys.exit(1)
 
     if not Path(srt_path).exists():
-        print(f"Error: 자막 파일을 찾을 수 없습니다: {srt_path}")
+        print(f"Error: SRT not found: {srt_path}")
         sys.exit(1)
 
-    print(f"\n=== 자막 Burn-in 시작 ===")
-    print(f"입력 영상: {video_path}")
-    print(f"입력 자막: {srt_path}")
+    print(f"\n=== Drawtext Burn-in ===")
+    print(f"Video: {video_path}")
+    print(f"Subtitle: {srt_path}")
 
-    # 영상 해상도 가져오기
-    try:
-        result = subprocess.run(
-            ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
-             '-show_entries', 'stream=width,height', '-of', 'csv=p=0', video_path],
-            capture_output=True, text=True, check=True
-        )
-        width, height = map(int, result.stdout.strip().split(','))
-    except Exception as e:
-        print(f"Error: 영상 정보를 가져올 수 없습니다: {e}")
+    # Get video info
+    width, height = get_video_info(video_path)
+    print(f"Resolution: {width}x{height}")
+
+    # Find font
+    font_path = find_font()
+    if not font_path:
+        print("Error: No CJK font found")
         sys.exit(1)
+    print(f"Font: {font_path}")
 
-    print(f"영상 해상도: {width}x{height}")
+    # Parse SRT
+    cues = parse_srt(srt_path)
+    print(f"Subtitles: {len(cues)} cues")
 
-    # ASS 파일 생성 (subtitles/ass/ 디렉토리에 저장)
-    srt_file = Path(srt_path)
-    ass_dir = srt_file.parent.parent / "ass"  # subtitles/ass/
-    ass_dir.mkdir(exist_ok=True)
-    ass_path = str(ass_dir / srt_file.with_suffix('.ass').name)
-    print(f"\n=== SRT -> ASS 변환 중 ===")
+    # Build filter
+    vf = build_drawtext_filter(cues, width, height, font_path)
 
-    try:
-        cues = parse_srt(srt_path)
-        generate_ass(cues, width, height, ass_path)
-    except Exception as e:
-        print(f"Error: ASS 파일 생성 실패: {e}")
-        sys.exit(1)
-
-    # 출력 경로 설정
+    # Set output path
     if not output_path:
-        video_stem = Path(video_path).stem
-        output_dir = Path(video_path).parent / "burnin_output"
+        video_file = Path(video_path)
+        output_dir = Path("burnin_output")
         output_dir.mkdir(exist_ok=True)
-        output_path = str(output_dir / f"{video_stem}_burnin.mp4")
+        output_path = str(output_dir / f"{video_file.stem}_burnin.mp4")
+    else:
+        # Ensure output directory exists
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
-    print(f"\n=== ffmpeg Burn-in 시작 ===")
-    print(f"출력 경로: {output_path}")
+    print(f"Output: {output_path}")
+    print(f"\nProcessing...")
 
-    # ffmpeg 명령 실행
+    # Use filter_complex_script for large filters (avoid argument list too long)
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        # Write filter as filter_complex format
+        f.write(f"[0:v]{vf}[out]")
+        filter_script = f.name
+
     try:
         cmd = [
-            'ffmpeg',
+            'ffmpeg', '-y',
             '-i', video_path,
-            '-vf', f"ass={ass_path}",
+            '-filter_complex_script', filter_script,
+            '-map', '[out]',
+            '-map', '0:a?',
             '-c:a', 'copy',
-            '-y',
             output_path
         ]
 
-        subprocess.run(cmd, check=True)
-
-        print(f"\n=== 완료 ===")
-        print(f"출력 파일: {output_path}")
-
-        # 파일 크기 확인
+        subprocess.run(cmd, check=True, capture_output=True)
         size_mb = Path(output_path).stat().st_size / (1024 * 1024)
-        print(f"파일 크기: {size_mb:.1f} MB")
-
+        print(f"\n=== Complete ===")
+        print(f"Output: {output_path}")
+        print(f"Size: {size_mb:.1f} MB")
     except subprocess.CalledProcessError as e:
-        print(f"Error: ffmpeg 실행 실패: {e}")
+        print(f"Error: {e.stderr.decode()}")
         sys.exit(1)
-    except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+    finally:
+        # Clean up temp file
+        Path(filter_script).unlink(missing_ok=True)
 
 
 if __name__ == '__main__':

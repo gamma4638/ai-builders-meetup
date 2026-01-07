@@ -21,3 +21,7 @@ Thumbs.db
 
 # Temp files
 2-echo-delta/videos/_temp/
+
+# YouTube API credentials
+client_secrets.json
+.youtube_token.json

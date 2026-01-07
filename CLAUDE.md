@@ -37,7 +37,7 @@
 | 동훈님 | `subtitles/corrected/meetup_02_동훈님_corrected.srt` | 완료 |
 | 동운님 | `subtitles/corrected/meetup_02_동운님_corrected.srt` | 완료 |
 | 서진님 | `subtitles/corrected/meetup_02_서진님_corrected.srt` | 완료 |
-| 패널 | - | 대기 |
+| 패널 | `subtitles/corrected/meetup_02_패널_corrected.srt` | 완료 |
 
 ### 영상-PDF 매칭
 
@@ -48,6 +48,7 @@
 | 동운님 발표 | `slides/3-최동운-계산기 압수 당해서...pdf` |
 | 건호님 발표 | `slides/4-신건호-AI Builder Meetup...pdf` |
 | 키노트 | `slides/0-정구봉-echo-delta-keynote.pdf` |
+| 패널 토론 | `terms/glossary.yaml` (통합 용어집) |
 
 ### 자막 생성 명령어
 
@@ -89,31 +90,35 @@ python scripts/subtitle/generate.py "2-echo-delta/videos/raw/{영상파일}.mov"
 ai-builders-meetup/
 ├── 2-echo-delta/           # 2회차 밋업
 │   ├── slides/             # 발표자료 PDF
+│   ├── terms/              # 용어집
+│   │   └── glossary.yaml   # 통합 용어집 (패널 토론용)
 │   ├── videos/             # 영상 및 자막
 │   │   ├── raw/            # 원본 영상 (.mov)
 │   │   ├── cropped/        # 크롭된 영상
 │   │   ├── subtitles/      # 자막 파일들
 │   │   │   ├── raw/        # 원본 SRT
 │   │   │   ├── corrected/  # 교정된 SRT
-│   │   │   ├── ass/        # ASS 포맷
+│   │   │   ├── en/         # 영어 번역
 │   │   │   └── validation/ # 검증 보고서
 │   │   └── burnin_output/  # 자막 합성 영상
 │   └── speakers/           # 스피커 정보
 ├── scripts/
-│   └── subtitle/           # 자막 관련 스크립트
-│       ├── generate.py         # Whisper로 자막 생성
-│       ├── generate_api.py     # OpenAI API로 자막 생성
-│       ├── generate_full.py    # 전체 파이프라인
-│       ├── cleaner.py          # 중복/hallucination 제거
-│       ├── corrector.py        # 전문용어 교정
-│       └── burnin.py           # ffmpeg burn-in
-├── SUBTITLE_DESIGN_GUIDE.md # 자막 하드코딩 ffmpeg/ASS 스타일 가이드
+│   ├── subtitle/           # 자막 관련 스크립트
+│   │   ├── generate.py         # Whisper로 자막 생성
+│   │   ├── generate_api.py     # OpenAI API로 자막 생성
+│   │   ├── burnin.py           # ffmpeg burn-in
+│   │   └── STYLE_GUIDE.md      # 자막 하드코딩 스타일 가이드
+│   └── youtube/            # YouTube 업로드
+│       ├── auth.py             # OAuth 인증
+│       ├── upload.py           # 영상 업로드
+│       └── captions.py         # 자막 업로드
 └── .claude/
     ├── hooks/              # Claude Code Hooks
     │   ├── codex-review.sh     # 커밋 시 코드 리뷰
     │   └── suggest-commit.sh   # 커밋 메시지 제안
     ├── skills/             # Claude Code Skills (진입점)
     │   ├── video-subtitle/ # 자막 생성 스킬
+    │   ├── finalize/       # 업로드 준비물 완성 (번역+번인)
     │   ├── speaker-guide/  # 스피커 가이드 생성
     │   ├── clarify/        # 요구사항 구체화
     │   └── panel-talk-questions/
@@ -134,8 +139,11 @@ ai-builders-meetup/
   - `--video`: 영상 파일 경로 (새로 생성시)
   - `--srt`: 기존 자막 파일 경로 (정리/교정부터 시작시)
   - `--reference`: 발표자료 PDF (교정/검증용)
-  - `--translate`: 영어 번역 수행 (선택, 기본값 false)
-  - 워크플로우: generator → cleaner → corrector → validator → qa → translator
+  - 워크플로우: generator → cleaner → corrector → validator → corrector(2차) → qa → corrector(3차)
+- `/finalize` - 업로드 준비물 완성 (영어 번역 + 자막 번인 병렬 실행)
+  - `--srt`: 교정된 SRT 파일 경로 (미지정 시 corrected/ 목록에서 선택)
+  - 워크플로우: translator + burnin (병렬)
+  - 출력: `en/*_en.srt` + `burnin_output/*_burnin.mp4`
 - `/speaker-guide` - 스피커 가이드 문서 생성
 - `/clarify` - 요구사항 구체화 (질문을 통해 정리)
 

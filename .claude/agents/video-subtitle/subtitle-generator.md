@@ -82,7 +82,7 @@ source .venv/bin/activate
 python scripts/subtitle/generate.py "{video_path}"
 ```
 
-출력 파일: `{video_basename}.srt` (스크립트가 자동 생성)
+출력 파일: `subtitles/raw/{video_basename}.srt` (영상 디렉토리 기준)
 
 #### method: openai-api (OpenAI API)
 
@@ -92,7 +92,7 @@ source .venv/bin/activate
 python scripts/subtitle/generate_api.py "{video_path}"
 ```
 
-출력 파일: `{video_basename}.srt` (스크립트가 자동 생성)
+출력 파일: `subtitles/raw/{video_basename}.srt` (영상 디렉토리 기준)
 
 **참고**: `.env` 파일에 `OPENAI_API_KEY`가 설정되어 있어야 함
 
